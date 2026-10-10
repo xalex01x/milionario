@@ -11,8 +11,7 @@ try:
     from PIL import Image, ImageTk
 except ImportError as exc:
     raise SystemExit(
-        "Installa le librerie necessarie con:\n"
-        "pip install opencv-python pillow"
+        "Installa le librerie necessarie con:\n" "pip install opencv-python pillow"
     ) from exc
 
 
@@ -26,6 +25,7 @@ FONT = "ICT Conduit"
 # =========================================================
 # GIOCO
 # =========================================================
+
 
 class Milionario:
 
@@ -44,11 +44,7 @@ class Milionario:
         self.root.configure(bg=self.BG)
         self.root.attributes("-fullscreen", True)
 
-        self.canvas = tk.Canvas(
-            root,
-            highlightthickness=0,
-            bg=self.BG
-        )
+        self.canvas = tk.Canvas(root, highlightthickness=0, bg=self.BG)
         self.canvas.pack(fill="both", expand=True)
 
         self.cap = cv2.VideoCapture(0)
@@ -128,30 +124,20 @@ class Milionario:
 
         if original is None:
             self.canvas.create_rectangle(
-                x1, y1, x2, y2,
-                fill=fallback_color,
-                outline=self.WHITE,
-                width=2
+                x1, y1, x2, y2, fill=fallback_color, outline=self.WHITE, width=2
             )
             return
 
         cache_key = (nome, width, height)
 
         if cache_key not in self.asset_cache:
-            resized = original.resize(
-                (width, height),
-                Image.Resampling.LANCZOS
-            )
+            resized = original.resize((width, height), Image.Resampling.LANCZOS)
 
             self.asset_cache[cache_key] = ImageTk.PhotoImage(resized)
 
         image = self.asset_cache[cache_key]
 
-        self.canvas.create_image(
-            x1, y1,
-            image=image,
-            anchor="nw"
-        )
+        self.canvas.create_image(x1, y1, image=image, anchor="nw")
 
     # =====================================================
     # UTILITÀ
@@ -185,11 +171,7 @@ class Milionario:
 
                 return Image.fromarray(frame)
 
-        return Image.new(
-            "RGB",
-            (width, height),
-            (5, 15, 35)
-        )
+        return Image.new("RGB", (width, height), (5, 15, 35))
 
     # =====================================================
     # DISEGNO PRINCIPALE
@@ -202,11 +184,7 @@ class Milionario:
 
             self.canvas.delete("all")
 
-            self.canvas.create_image(
-                0, 0,
-                image=self.photo,
-                anchor="nw"
-            )
+            self.canvas.create_image(0, 0, image=self.photo, anchor="nw")
 
             width, height = image.size
 
@@ -236,103 +214,70 @@ class Milionario:
     # =====================================================
 
     def draw_ladder_side(self, width, height):
-        panel_x1 = width * 0.76
-        panel_x2 = width * 0.98
+        # Dimensioni dello sfondo della scalata
+        panel_x1 = width * 0.60
+        panel_x2 = width + 1  # * 0.98
+        panel_top = height * 0  # * 0.08
+        panel_bottom = height  # * 0.89
 
-        top = height * 0.10
-        bottom = height * 0.87
-        row_height = (bottom - top) / len(PREMI)
-
-        self.canvas.create_text(
-            (panel_x1 + panel_x2) / 2,
-            height * 0.045,
-            text="MONTEPREMI",
-            fill=self.WHITE,
-            font=(FONT, max(14, int(height * 0.022)), "bold")
+        # Un solo sfondo per tutta la scalata
+        self.draw_image(
+            "sfondo_scalata",
+            panel_x1,
+            panel_top,
+            panel_x2,
+            panel_bottom,
+            self.BLUE_DARK,
         )
 
-        # Premio massimo in alto, premio minimo in fondo.
+        # Titolo
+        self.canvas.create_text(
+            (panel_x1 + panel_x2) / 2,
+            panel_top + height * 0.025,
+            text="VITTORIA",
+            fill=self.WHITE,
+            font=(FONT, max(14, int(height * 0.022)), "bold"),
+        )
+
+        # Spazio interno per i valori
+        values_top = panel_top + height * 0.065
+        values_bottom = panel_bottom - height * 0.015
+        row_height = (values_bottom - values_top) / len(PREMI)
+
+        # Premio massimo in alto, minimo in fondo
         for i, prize in enumerate(reversed(PREMI)):
             actual_index = len(PREMI) - 1 - i
-
-            y1 = top + i * row_height
-            y2 = y1 + row_height - 3
+            y = values_top + i * row_height + row_height / 2
 
             achieved = actual_index < self.level
-            current = (
-                actual_index == self.level
-                and self.level < len(PREMI)
-            )
+            current = actual_index == self.level and self.level < len(PREMI)
 
             if achieved:
-                fill = self.GREEN
-                text_color = self.WHITE
+                text_color = self.ORANGE
             elif current:
-                fill = self.GOLD
-                text_color = self.BG
+                text_color = self.GOLD
             else:
-                fill = self.BLUE_DARK
                 text_color = self.WHITE
 
-            self.canvas.create_rectangle(
-                panel_x1, y1,
-                panel_x2, y2,
-                fill=fill,
-                outline="#c6dcff",
-                width=2
-            )
-
+            # Numero del livello
             self.canvas.create_text(
-                panel_x1 + 10,
-                (y1 + y2) / 2,
+                panel_x1 + (panel_x2 - panel_x1) * 0.12,
+                y,
                 text=str(actual_index + 1),
                 fill=text_color,
-                anchor="w",
-                font=(FONT, max(10, int(row_height * 0.32)), "bold")
+                anchor="center",
+                font=(FONT, max(10, int(row_height * 0.48)), "bold"),
             )
 
+            # Importo
             self.canvas.create_text(
-                panel_x2 - 8,
-                (y1 + y2) / 2,
+                panel_x2 - (panel_x2 - panel_x1) * 0.08,
+                y,
                 text=self.money(prize),
                 fill=text_color,
                 anchor="e",
-                font=(FONT, max(10, int(row_height * 0.29)), "bold")
+                font=(FONT, max(10, int(row_height * 0.44)), "bold"),
             )
-
-        won = PREMI[self.level - 1] if self.level > 0 else 0
-
-        # self.canvas.create_text(
-        #     (panel_x1 + panel_x2) / 2,
-        #     height * 0.92,
-        #     text=f"VINTI: € {self.money(won)}",
-        #     fill=self.WHITE,
-        #     font=(FONT, max(11, int(height * 0.019)), "bold")
-        # )
-
-        # self.canvas.create_text(
-        #     width * 0.38,
-        #     height * 0.70,
-        #     text="CHI VUOL ESSERE MILIONARIO",
-        #     fill=self.WHITE,
-        #     font=(FONT, max(24, int(height * 0.045)), "bold")
-        # )
-
-        # self.canvas.create_text(
-        #     width * 0.38,
-        #     height * 0.78,
-        #     text="PREMI SPAZIO O INVIO PER INIZIARE",
-        #     fill=self.GOLD,
-        #     font=(FONT, max(13, int(height * 0.023)), "bold")
-        # )
-
-        # self.canvas.create_text(
-        #     width * 0.38,
-        #     height * 0.85,
-        #     text="La webcam è lo sfondo del gioco",
-        #     fill=self.WHITE,
-        #     font=(FONT, max(11, int(height * 0.018)))
-        # )
 
     # =====================================================
     # DOMANDA E RISPOSTE CON SFONDI IMMAGINE
@@ -372,9 +317,9 @@ class Milionario:
 
         answers = [question.A, question.B, question.C, question.D]
 
-        answer_left = width  * 0 # 0.02
-        answer_right = width *  1 # 0.98
-        answer_gap = width * 0 # 0.02
+        answer_left = width * 0  # 0.02
+        answer_right = width * 1  # 0.98
+        answer_gap = width * 0  # 0.02
 
         answer_width = (answer_right - answer_left - answer_gap) / 2
 
@@ -447,12 +392,12 @@ class Milionario:
             hint = "FRECCE O A/B/C/D: SELEZIONA   •   INVIO: CONFERMA"
 
         else:
-            if self.selected_letter() == question.corretta:
-                hint = "RISPOSTA CORRETTA!"
-            else:
-                hint = f"RISPOSTA ERRATA — " f"QUELLA CORRETTA ERA {question.corretta}"
+            #     if self.selected_letter() == question.corretta:
+            #         hint = "RISPOSTA CORRETTA!"
+            #     else:
+            #         hint = f"RISPOSTA ERRATA — " f"QUELLA CORRETTA ERA {question.corretta}"
 
-            hint += "   •   SPAZIO/INVIO: TORNA ALLA SCALATA"
+            hint = "SPAZIO/INVIO: TORNA ALLA SCALATA"
 
         self.canvas.create_text(
             center_x,
@@ -477,7 +422,7 @@ class Milionario:
             center_y - 70,
             text="COMPLIMENTI!",
             fill=self.GOLD,
-            font=(FONT, max(30, int(height * 0.07)), "bold")
+            font=(FONT, max(30, int(height * 0.07)), "bold"),
         )
 
         self.canvas.create_text(
@@ -485,7 +430,7 @@ class Milionario:
             center_y,
             text=f"HAI VINTO € {self.money(PREMI[-1])}",
             fill=self.WHITE,
-            font=(FONT, max(24, int(height * 0.045)), "bold")
+            font=(FONT, max(24, int(height * 0.045)), "bold"),
         )
 
         self.canvas.create_text(
@@ -493,7 +438,7 @@ class Milionario:
             center_y + 75,
             text="Premi ESC per uscire",
             fill=self.WHITE,
-            font=(FONT, 16)
+            font=(FONT, 16),
         )
 
     # =====================================================
@@ -594,6 +539,7 @@ class Milionario:
 # =========================================================
 # AVVIO
 # =========================================================
+
 
 def main():
     root = tk.Tk()
