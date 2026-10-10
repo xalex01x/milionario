@@ -403,8 +403,8 @@ class Milionario:
         # DOMANDA - SFONDO A TUTTA LARGHEZZA
         # -------------------------------------------------
 
-        question_top = height * 0.55
-        question_bottom = height * 0.70
+        question_top = height * 0.60
+        question_bottom = height * 0.75
 
         self.draw_image("domanda", 0, question_top, width, question_bottom, self.BLUE)
 
@@ -430,7 +430,7 @@ class Milionario:
 
         answer_width = (answer_right - answer_left - answer_gap) / 2
 
-        answers_top = height * 0.725
+        answers_top = height * 0.775
         row_height = height * 0.075
         gap_y = height * 0.018
 
@@ -495,25 +495,25 @@ class Milionario:
         # ISTRUZIONI IN BASSO
         # -------------------------------------------------
 
-        if self.state == "question":
-            if self.awaiting_final_confirmation:
-                hint = "RISPOSTA DEFINITIVA — PREMI INVIO PER CONFERMARE"
-            elif self.needs_final_confirmation():
-                hint = "FRECCE O A/B/C/D: SELEZIONA • INVIO: RISPOSTA DEFINITIVA"
-            else:
-                hint = "FRECCE O A/B/C/D: SELEZIONA • INVIO: CONFERMA"
-        else:
-            hint = "SPAZIO/INVIO: TORNA ALLA SCALATA"
+        # if self.state == "question":
+        #     if self.awaiting_final_confirmation:
+        #         hint = "RISPOSTA DEFINITIVA — PREMI INVIO PER CONFERMARE"
+        #     elif self.needs_final_confirmation():
+        #         hint = "FRECCE O A/B/C/D: SELEZIONA • INVIO: RISPOSTA DEFINITIVA"
+        #     else:
+        #         hint = "FRECCE O A/B/C/D: SELEZIONA • INVIO: CONFERMA"
+        # else:
+        #     hint = "SPAZIO/INVIO: TORNA ALLA SCALATA"
 
-        self.canvas.create_text(
-            center_x,
-            height * 0.94,
-            text=hint,
-            fill=self.WHITE,
-            width=content_width,
-            justify="center",
-            font=(FONT, max(11, int(height * 0.017)), "bold"),
-        )
+        # self.canvas.create_text(
+        #     center_x,
+        #     height * 0.94,
+        #     text=hint,
+        #     fill=self.WHITE,
+        #     width=content_width,
+        #     justify="center",
+        #     font=(FONT, max(11, int(height * 0.017)), "bold"),
+        # )
 
     # =====================================================
     # VITTORIA FINALE
