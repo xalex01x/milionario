@@ -2,6 +2,7 @@ import tkinter as tk
 import random
 import time
 from pathlib import Path
+import pygame
 
 from domande import DOMANDE
 from config import LETTERE, PREMI, IMMAGINI
@@ -46,6 +47,25 @@ class Milionario:
 
         self.canvas = tk.Canvas(root, highlightthickness=0, bg=self.BG)
         self.canvas.pack(fill="both", expand=True)
+        pygame.mixer.init()
+
+        # Effetti sonori e musica di sottofondo
+        self.audio = {
+            "loop": pygame.mixer.Sound(str(CARTELLA_ASSETS / "music_loop.mp3")),
+            "corretta": pygame.mixer.Sound(str(CARTELLA_ASSETS / "music_correct.mp3")),
+            "sbagliata": pygame.mixer.Sound(str(CARTELLA_ASSETS / "music_wrong.mp3")),
+            "definitiva": pygame.mixer.Sound(
+                str(CARTELLA_ASSETS / "music_definitive.mp3")
+            ),
+        }
+
+        # Canali indipendenti
+        self.loop_channel = pygame.mixer.Channel(0)
+        self.sfx_channel = pygame.mixer.Channel(2)
+
+        # La sigla iniziale viene riprodotta come musica in streaming
+        pygame.mixer.music.load(str(CARTELLA_ASSETS / "music_intro.mp3"))
+        pygame.mixer.music.set_volume(1.0)
 
         self.cap = cv2.VideoCapture(0)
         self.photo = None
@@ -63,10 +83,14 @@ class Milionario:
         # question: visualizzazione della domanda
         # result: visualizzazione del risultato
         # finished: vittoria finale
-        self.state = "ladder"
+        # intro: intro
+        self.state = "intro"
 
         self.current_question = None
         self.current_prize_index = 0
+
+        self.audio_transition_pending = False
+        self.audio_transition_id = None
 
         self.question_pool = DOMANDE.copy()
         random.shuffle(self.question_pool)
@@ -77,8 +101,56 @@ class Milionario:
         self.root.bind("<Key>", self.on_key)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
+        pygame.mixer.music.play()
         self.draw_loop()
         self.blink_loop()
+
+    # =====================================================
+    # MUSICA
+    # =====================================================
+
+    def start_loop(self):
+        """Avvia il loop se non è già in riproduzione."""
+        if not self.loop_channel.get_busy():
+            self.loop_channel.play(self.audio["loop"], loops=-1)
+
+    def stop_loop(self):
+        """Interrompe la musica di sottofondo."""
+        self.loop_channel.stop()
+
+    def play_effect(self, name):
+        """Interrompe il loop e riproduce un effetto sonoro."""
+        self.stop_loop()
+        self.sfx_channel.stop()
+        self.sfx_channel.play(self.audio[name])
+
+    def needs_final_confirmation(self):
+        """Le domande da 100.000 € in su richiedono due Invii."""
+        return self.level < len(PREMI) and PREMI[self.level] >= 100000
+
+    def schedule_audio_transition(self, channel, callback):
+        """Esegue callback quando termina l'audio."""
+
+        self.audio_transition_pending = True
+
+        def check_audio():
+            if not channel.get_busy():
+                self.audio_transition_pending = False
+                self.audio_transition_id = None
+                callback()
+            else:
+                self.audio_transition_id = self.root.after(100, check_audio)
+
+        self.audio_transition_id = self.root.after(100, check_audio)
+
+    def cancel_audio_transition(self):
+        """Annulla un cambio schermata programmato."""
+
+        if self.audio_transition_id is not None:
+            self.root.after_cancel(self.audio_transition_id)
+            self.audio_transition_id = None
+
+        self.audio_transition_pending = False
 
     # =====================================================
     # CARICAMENTO DELLE IMMAGINI
@@ -150,9 +222,14 @@ class Milionario:
         return LETTERE[self.selected]
 
     def close(self):
+        self.cancel_audio_transition()
+        self.stop_loop()
+        pygame.mixer.music.stop()
+
         if self.cap is not None and self.cap.isOpened():
             self.cap.release()
 
+        pygame.mixer.quit()
         self.root.destroy()
 
     def webcam_frame(self):
@@ -179,6 +256,36 @@ class Milionario:
 
     def draw_loop(self):
         try:
+            if self.state == "intro":
+                self.canvas.delete("all")
+                self.canvas.configure(bg="black")
+
+                width = max(1, self.root.winfo_width())
+                height = max(1, self.root.winfo_height())
+
+                self.canvas.create_rectangle(
+                    0, 0, width, height, fill="black", outline="black"
+                )
+
+                self.canvas.create_text(
+                    width / 2,
+                    height * 0.45,
+                    text="CHI VUOL ESSERE MILIONARIO?",
+                    fill="white",
+                    font=(FONT, max(24, int(height * 0.045)), "bold"),
+                )
+
+                self.canvas.create_text(
+                    width / 2,
+                    height * 0.65,
+                    text="PREMI INVIO PER INIZIARE",
+                    fill=self.GOLD,
+                    font=(FONT, max(16, int(height * 0.025)), "bold"),
+                )
+
+                self.root.after(33, self.draw_loop)
+                return
+
             image = self.webcam_frame()
             self.photo = ImageTk.PhotoImage(image)
 
@@ -389,14 +496,13 @@ class Milionario:
         # -------------------------------------------------
 
         if self.state == "question":
-            hint = "FRECCE O A/B/C/D: SELEZIONA   •   INVIO: CONFERMA"
-
+            if self.awaiting_final_confirmation:
+                hint = "RISPOSTA DEFINITIVA — PREMI INVIO PER CONFERMARE"
+            elif self.needs_final_confirmation():
+                hint = "FRECCE O A/B/C/D: SELEZIONA • INVIO: RISPOSTA DEFINITIVA"
+            else:
+                hint = "FRECCE O A/B/C/D: SELEZIONA • INVIO: CONFERMA"
         else:
-            #     if self.selected_letter() == question.corretta:
-            #         hint = "RISPOSTA CORRETTA!"
-            #     else:
-            #         hint = f"RISPOSTA ERRATA — " f"QUELLA CORRETTA ERA {question.corretta}"
-
             hint = "SPAZIO/INVIO: TORNA ALLA SCALATA"
 
         self.canvas.create_text(
@@ -458,25 +564,53 @@ class Milionario:
         self.current_prize_index = self.level
         self.selected = 0
         self.state = "question"
+        # Music
+        self.awaiting_final_confirmation = False
+        self.start_loop()
 
     def reveal_answer(self):
         if self.state != "question":
             return
 
+        if self.audio_transition_pending:
+            return
+
+        # Domande da 100.000 € in su:
+        # primo Invio = risposta definitiva.
+        if self.needs_final_confirmation():
+            if not self.awaiting_final_confirmation:
+                self.awaiting_final_confirmation = True
+                self.play_effect("definitiva")
+                return
+
+        is_correct = self.selected_letter() == self.current_question.corretta
+
         self.state = "result"
         self.blink_on = True
         self.last_blink = time.monotonic()
 
-        if self.selected_letter() == self.current_question.corretta:
-            # Il premio aumenta solamente in caso di risposta corretta.
+        if is_correct:
             self.level += 1
+            self.play_effect("corretta")
+        else:
+            self.play_effect("sbagliata")
+
+        # La schermata del risultato resta visibile
+        # fino alla fine del suono.
+        self.schedule_audio_transition(self.sfx_channel, self.back_to_ladder)
 
     def back_to_ladder(self):
         if self.state != "result":
             return
 
+        self.stop_loop()
+        self.sfx_channel.stop()
+        self.awaiting_final_confirmation = False
+
         if self.level >= len(PREMI):
             self.state = "finished"
+            # Riproduce nuovamente la sigla alla vittoria
+            pygame.mixer.music.play()
         else:
             self.state = "ladder"
             self.current_question = None
@@ -489,18 +623,30 @@ class Milionario:
         key = event.keysym.lower()
         char = (event.char or "").lower()
 
+        # ESC esce sempre dal gioco
         if key == "escape":
             self.close()
             return
 
+        # SCHERMATA INTRO: primo Invio
+        if self.state == "intro":
+            if key in ("return", "kp_enter"):
+                pygame.mixer.music.stop()
+                self.start_loop()
+                self.state = "ladder"
+            return
+
+        # SCALATA: Invio apre la domanda successiva
         if self.state == "ladder":
             if key in ("space", "return", "kp_enter"):
                 self.next_question()
             return
 
+        # SCHERMATA DI VITTORIA FINALE
         if self.state == "finished":
             return
 
+        # SCHERMATA DELLA DOMANDA
         if self.state == "question":
 
             if key in ("left", "up"):
@@ -517,6 +663,7 @@ class Milionario:
 
             return
 
+        # SCHERMATA DEL RISULTATO
         if self.state == "result":
             if key in ("space", "return", "kp_enter"):
                 self.back_to_ladder()
