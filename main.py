@@ -1,7 +1,10 @@
 import tkinter as tk
 import random
 import time
-from dataclasses import dataclass
+from pathlib import Path
+
+from domande import DOMANDE
+from config import LETTERE, PREMI, IMMAGINI
 
 try:
     import cv2
@@ -17,103 +20,13 @@ except ImportError as exc:
 # CONFIGURAZIONE
 # =========================================================
 
-PREMI = [
-    10_000,
-    20_000,
-    30_000,
-    50_000,
-    70_000,
-    100_000,
-    150_000,
-    200_000,
-    300_000,
-    1_000_000,
-]
-
-LETTERE = ("A", "B", "C", "D")
-
-
-@dataclass
-class Domanda:
-    domanda: str
-    A: str
-    B: str
-    C: str
-    D: str
-    corretta: str
-
-
-DOMANDE = [
-    Domanda(
-        "Quale pianeta è noto come Pianeta Rosso?",
-        "Venere", "Marte", "Giove", "Mercurio", "B"
-    ),
-    Domanda(
-        "Quanti lati ha un esagono?",
-        "Cinque", "Sette", "Sei", "Otto", "C"
-    ),
-    Domanda(
-        "Qual è la capitale del Portogallo?",
-        "Lisbona", "Madrid", "Porto", "Siviglia", "A"
-    ),
-    Domanda(
-        "Chi ha dipinto la Gioconda?",
-        "Caravaggio", "Raffaello", "Michelangelo",
-        "Leonardo da Vinci", "D"
-    ),
-    Domanda(
-        "Quale gas assorbono principalmente le piante nella fotosintesi?",
-        "Ossigeno", "Azoto", "Anidride carbonica", "Idrogeno", "C"
-    ),
-    Domanda(
-        "In quale continente si trova il deserto del Sahara?",
-        "Africa", "Asia", "Oceania", "America del Sud", "A"
-    ),
-    Domanda(
-        "Qual è il simbolo chimico dell'oro?",
-        "Ag", "Au", "Fe", "Or", "B"
-    ),
-    Domanda(
-        "Quanti minuti ci sono in tre ore?",
-        "120", "150", "180", "210", "C"
-    ),
-    Domanda(
-        "Chi scrisse I promessi sposi?",
-        "Giovanni Verga", "Italo Calvino",
-        "Giosuè Carducci", "Alessandro Manzoni", "D"
-    ),
-    Domanda(
-        "Quale di questi è un mammifero?",
-        "Squalo", "Delfino", "Trota", "Polpo", "B"
-    ),
-    Domanda(
-        "Qual è la capitale del Canada?",
-        "Toronto", "Vancouver", "Ottawa", "Montréal", "C"
-    ),
-    Domanda(
-        "Quale strumento misura la pressione atmosferica?",
-        "Barometro", "Termometro", "Anemometro", "Igrometro", "A"
-    ),
-    Domanda(
-        "In quale anno è caduto il Muro di Berlino?",
-        "1987", "1989", "1991", "1993", "B"
-    ),
-    Domanda(
-        "Qual è il numero primo più piccolo?",
-        "0", "1", "2", "3", "C"
-    ),
-    Domanda(
-        "Quale oceano è il più grande?",
-        "Atlantico", "Indiano", "Artico", "Pacifico", "D"
-    ),
-]
-
+CARTELLA_ASSETS = Path(__file__).resolve().parent / "assets"
 
 # =========================================================
 # GIOCO
 # =========================================================
 
-class MilionarioWebcam:
+class Milionario:
 
     BG = "#06152b"
     BLUE = "#073b80"
@@ -130,8 +43,6 @@ class MilionarioWebcam:
         self.root.configure(bg=self.BG)
         self.root.attributes("-fullscreen", True)
 
-        self.cap = cv2.VideoCapture(0)
-
         self.canvas = tk.Canvas(
             root,
             highlightthickness=0,
@@ -139,14 +50,21 @@ class MilionarioWebcam:
         )
         self.canvas.pack(fill="both", expand=True)
 
+        self.cap = cv2.VideoCapture(0)
         self.photo = None
+
+        # Immagini originali e immagini ridimensionate.
+        self.assets = {}
+        self.asset_cache = {}
+
+        self.load_assets()
 
         self.level = 0
         self.selected = 0
 
-        # ladder: scalata iniziale
-        # question: domanda
-        # result: risultato della risposta
+        # ladder: schermata iniziale con la scalata
+        # question: visualizzazione della domanda
+        # result: visualizzazione del risultato
         # finished: vittoria finale
         self.state = "ladder"
 
@@ -165,21 +83,90 @@ class MilionarioWebcam:
         self.draw_loop()
         self.blink_loop()
 
-    # -----------------------------------------------------
+    # =====================================================
+    # CARICAMENTO DELLE IMMAGINI
+    # =====================================================
+
+    def load_assets(self):
+        """
+        Le immagini devono essere nella cartella assets/,
+        situata accanto a main.py.
+
+        assets/
+            domanda.png
+            risposta.png
+            corretta.png
+            errata_yellow.png
+            errata_orange.png
+        """
+
+        for nome, filename in IMMAGINI.items():
+            path = CARTELLA_ASSETS / filename
+
+            try:
+                with Image.open(path) as image:
+                    self.assets[nome] = image.convert("RGBA")
+
+            except FileNotFoundError:
+                print(f"ATTENZIONE: immagine non trovata: {path}")
+
+            except Exception as exc:
+                print(f"Errore nel caricamento di {path}: {exc}")
+
+    def draw_image(self, nome, x1, y1, x2, y2, fallback_color):
+        """
+        Disegna un'immagine come sfondo del testo.
+        Se l'immagine manca, usa un rettangolo di fallback.
+        Le immagini ridimensionate vengono memorizzate in cache.
+        """
+
+        width = max(1, int(x2 - x1))
+        height = max(1, int(y2 - y1))
+
+        original = self.assets.get(nome)
+
+        if original is None:
+            self.canvas.create_rectangle(
+                x1, y1, x2, y2,
+                fill=fallback_color,
+                outline=self.WHITE,
+                width=2
+            )
+            return
+
+        cache_key = (nome, width, height)
+
+        if cache_key not in self.asset_cache:
+            resized = original.resize(
+                (width, height),
+                Image.Resampling.LANCZOS
+            )
+
+            self.asset_cache[cache_key] = ImageTk.PhotoImage(resized)
+
+        image = self.asset_cache[cache_key]
+
+        self.canvas.create_image(
+            x1, y1,
+            image=image,
+            anchor="nw"
+        )
+
+    # =====================================================
     # UTILITÀ
-    # -----------------------------------------------------
+    # =====================================================
 
     def money(self, value):
         return f"{value:,}".replace(",", ".")
+
+    def selected_letter(self):
+        return LETTERE[self.selected]
 
     def close(self):
         if self.cap is not None and self.cap.isOpened():
             self.cap.release()
 
         self.root.destroy()
-
-    def selected_letter(self):
-        return LETTERE[self.selected]
 
     def webcam_frame(self):
         width = max(1, self.root.winfo_width())
@@ -192,13 +179,7 @@ class MilionarioWebcam:
                 frame = cv2.flip(frame, 1)
                 frame = cv2.resize(frame, (width, height))
 
-                # Sfondo scurito per rendere leggibili le grafiche.
-                frame = cv2.convertScaleAbs(
-                    frame,
-                    alpha=0.55,
-                    beta=-15
-                )
-
+                # La webcam resta naturale, senza il filtro a rete.
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
                 return Image.fromarray(frame)
@@ -209,9 +190,9 @@ class MilionarioWebcam:
             (5, 15, 35)
         )
 
-    # -----------------------------------------------------
+    # =====================================================
     # DISEGNO PRINCIPALE
-    # -----------------------------------------------------
+    # =====================================================
 
     def draw_loop(self):
         try:
@@ -219,6 +200,7 @@ class MilionarioWebcam:
             self.photo = ImageTk.PhotoImage(image)
 
             self.canvas.delete("all")
+
             self.canvas.create_image(
                 0, 0,
                 image=self.photo,
@@ -227,23 +209,13 @@ class MilionarioWebcam:
 
             width, height = image.size
 
-            # Velo scuro trasparente sulla webcam.
-            self.canvas.create_rectangle(
-                0, 0, width, height,
-                fill="#020817",
-                stipple="gray50",
-                outline=""
-            )
-
             if self.state == "ladder":
                 # La scalata appare soltanto nella schermata iniziale
                 # e quando si torna dal risultato.
                 self.draw_ladder_side(width, height)
 
             elif self.state in ("question", "result"):
-                # Durante la domanda e il risultato la scalata
-                # scompare completamente. Le grafiche occupano
-                # la larghezza dello schermo nella parte inferiore.
+                # La scalata scompare durante domanda e risultato.
                 self.draw_question(width, height)
 
             elif self.state == "finished":
@@ -254,9 +226,9 @@ class MilionarioWebcam:
 
         self.root.after(33, self.draw_loop)
 
-    # -----------------------------------------------------
+    # =====================================================
     # SCALATA INIZIALE
-    # -----------------------------------------------------
+    # =====================================================
 
     def draw_ladder_side(self, width, height):
         panel_x1 = width * 0.76
@@ -274,7 +246,7 @@ class MilionarioWebcam:
             font=("Arial", max(14, int(height * 0.022)), "bold")
         )
 
-        # Il premio più alto è in cima, quello più basso in fondo.
+        # Premio massimo in alto, premio minimo in fondo.
         for i, prize in enumerate(reversed(PREMI)):
             actual_index = len(PREMI) - 1 - i
 
@@ -292,7 +264,7 @@ class MilionarioWebcam:
                 text_color = self.WHITE
             elif current:
                 fill = self.GOLD
-                text_color = "#06152b"
+                text_color = self.BG
             else:
                 fill = self.BLUE_DARK
                 text_color = self.WHITE
@@ -357,9 +329,9 @@ class MilionarioWebcam:
             font=("Arial", max(11, int(height * 0.018)))
         )
 
-    # -----------------------------------------------------
-    # DOMANDA E RISPOSTE: PARTE INFERIORE DELLO SCHERMO
-    # -----------------------------------------------------
+    # =====================================================
+    # DOMANDA E RISPOSTE CON SFONDI IMMAGINE
+    # =====================================================
 
     def draw_question(self, width, height):
         question = self.current_question
@@ -367,36 +339,45 @@ class MilionarioWebcam:
         if question is None:
             return
 
-        # Le grafiche partono in basso, lasciando libera la parte
-        # superiore per la webcam. Non viene disegnata la scalata.
         left = width * 0.035
         right = width * 0.965
+
         center_x = (left + right) / 2
         content_width = right - left
+
+        # -------------------------------------------------
+        # DOMANDA
+        # -------------------------------------------------
 
         question_top = height * 0.55
         question_bottom = height * 0.70
 
-        prize = PREMI[self.current_prize_index]
-        question_number = self.current_prize_index + 1
-
-        self.canvas.create_rectangle(
+        self.draw_image(
+            "domanda",
             left, question_top,
             right, question_bottom,
-            fill=self.BLUE,
-            outline="#d6e6ff",
-            width=3
+            self.BLUE
         )
+
+        prize = PREMI[self.current_prize_index]
+        question_number = self.current_prize_index + 1
 
         self.canvas.create_text(
             center_x,
             (question_top + question_bottom) / 2,
-            text=f"DOMANDA {question_number}  •  € {self.money(prize)}\n\n{question.domanda}",
+            text=(
+                f"DOMANDA {question_number}  •  € {self.money(prize)}"
+                f"\n\n{question.domanda}"
+            ),
             fill=self.WHITE,
-            width=content_width * 0.94,
+            width=content_width * 0.92,
             justify="center",
             font=("Arial", max(15, int(height * 0.025)), "bold")
         )
+
+        # -------------------------------------------------
+        # RISPOSTE
+        # -------------------------------------------------
 
         answers = [
             question.A,
@@ -421,40 +402,40 @@ class MilionarioWebcam:
             y1 = answers_top + row * (row_height + gap_y)
             y2 = y1 + row_height
 
-            fill = self.BLUE
-            outline = "#c7d9f2"
+            # Sfondo predefinito della risposta.
             text_color = self.WHITE
+            background = "risposta_blu"
 
             if self.state == "result":
                 if letter == question.corretta:
-                    # La risposta corretta rimane verde.
-                    fill = self.GREEN
-                    outline = "#d8ffe1"
+                    if self.blink_on:
+                        background = "risposta_verde"
+                    else:
+                        background = "risposta_arancio"
 
                 elif letter == self.selected_letter():
-                    # La risposta sbagliata lampeggia giallo/arancione.
-                    if self.blink_on:
-                        fill = self.YELLOW
-                        outline = self.ORANGE
-                    else:
-                        fill = self.ORANGE
-                        outline = self.YELLOW
+                    background = "risposta_blu"
 
-                    text_color = "#171717"
+                    text_color = "#111111"
 
-            elif i == self.selected:
-                # Risposta attualmente selezionata.
-                fill = "#d87500"
-                outline = self.GOLD
-
-            self.canvas.create_rectangle(
-                x1, y1,
-                x2, y2,
-                fill=fill,
-                outline=outline,
-                width=3
+            self.draw_image(
+                background,
+                x1, y1, x2, y2,
+                self.BLUE
             )
 
+            # Quando si seleziona una risposta, un bordo dorato
+            # evidenzia la selezione senza coprire l'immagine.
+            if self.state == "question" and i == self.selected:
+                self.canvas.create_rectangle(
+                    x1 + 2, y1 + 2,
+                    x2 - 2, y2 - 2,
+                    fill="",
+                    outline=self.GOLD,
+                    width=4
+                )
+
+            # Testo sovrapposto all'immagine.
             self.canvas.create_text(
                 x1 + 15,
                 (y1 + y2) / 2,
@@ -474,8 +455,13 @@ class MilionarioWebcam:
                 font=("Arial", max(12, int(height * 0.020)))
             )
 
+        # -------------------------------------------------
+        # ISTRUZIONI
+        # -------------------------------------------------
+
         if self.state == "question":
             hint = "FRECCE O A/B/C/D: SELEZIONA   •   INVIO: CONFERMA"
+
         else:
             if self.selected_letter() == question.corretta:
                 hint = "RISPOSTA CORRETTA!"
@@ -497,9 +483,9 @@ class MilionarioWebcam:
             font=("Arial", max(11, int(height * 0.017)), "bold")
         )
 
-    # -----------------------------------------------------
+    # =====================================================
     # VITTORIA FINALE
-    # -----------------------------------------------------
+    # =====================================================
 
     def draw_finished(self, width, height):
         center_x = width / 2
@@ -529,9 +515,9 @@ class MilionarioWebcam:
             font=("Arial", 16)
         )
 
-    # -----------------------------------------------------
+    # =====================================================
     # LOGICA DEL GIOCO
-    # -----------------------------------------------------
+    # =====================================================
 
     def next_question(self):
         if self.level >= len(PREMI):
@@ -556,7 +542,7 @@ class MilionarioWebcam:
         self.last_blink = time.monotonic()
 
         if self.selected_letter() == self.current_question.corretta:
-            # Il premio sale esclusivamente con una risposta corretta.
+            # Il premio aumenta solamente in caso di risposta corretta.
             self.level += 1
 
     def back_to_ladder(self):
@@ -569,9 +555,9 @@ class MilionarioWebcam:
             self.state = "ladder"
             self.current_question = None
 
-    # -----------------------------------------------------
+    # =====================================================
     # TASTIERA
-    # -----------------------------------------------------
+    # =====================================================
 
     def on_key(self, event):
         key = event.keysym.lower()
@@ -590,6 +576,7 @@ class MilionarioWebcam:
             return
 
         if self.state == "question":
+
             if key in ("left", "up"):
                 self.selected = (self.selected - 1) % 4
 
@@ -608,9 +595,9 @@ class MilionarioWebcam:
             if key in ("space", "return", "kp_enter"):
                 self.back_to_ladder()
 
-    # -----------------------------------------------------
-    # ANIMAZIONE RISPOSTA ERRATA
-    # -----------------------------------------------------
+    # =====================================================
+    # ANIMAZIONE RISPOSTA
+    # =====================================================
 
     def blink_loop(self):
         if self.state == "result":
@@ -629,7 +616,7 @@ class MilionarioWebcam:
 
 def main():
     root = tk.Tk()
-    MilionarioWebcam(root)
+    Milionario(root)
     root.mainloop()
 
 
