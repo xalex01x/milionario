@@ -7,4 +7,5 @@ IMMAGINI = {
     "risposta_blu": "blue.png",
     "risposta_verde": "verde.png",
     "risposta_arancio": "arancio.png",
+    "canale_5": "canale_5.png",
 }

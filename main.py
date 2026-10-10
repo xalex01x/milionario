@@ -21,6 +21,7 @@ except ImportError as exc:
 # =========================================================
 
 CARTELLA_ASSETS = Path(__file__).resolve().parent / "assets"
+FONT = "ICT Conduit"
 
 # =========================================================
 # GIOCO
@@ -223,7 +224,11 @@ class Milionario:
 
         except tk.TclError:
             return
-
+        x1 = image.width - 210
+        x2 = image.width - 50
+        y1 = image.height - 210
+        y2 = image.height - 50
+        self.draw_image("canale_5", x1, y1, x2, y2, self.BLUE)
         self.root.after(33, self.draw_loop)
 
     # =====================================================
@@ -243,7 +248,7 @@ class Milionario:
             height * 0.045,
             text="MONTEPREMI",
             fill=self.WHITE,
-            font=("Arial", max(14, int(height * 0.022)), "bold")
+            font=(FONT, max(14, int(height * 0.022)), "bold")
         )
 
         # Premio massimo in alto, premio minimo in fondo.
@@ -283,7 +288,7 @@ class Milionario:
                 text=str(actual_index + 1),
                 fill=text_color,
                 anchor="w",
-                font=("Arial", max(10, int(row_height * 0.32)), "bold")
+                font=(FONT, max(10, int(row_height * 0.32)), "bold")
             )
 
             self.canvas.create_text(
@@ -292,42 +297,42 @@ class Milionario:
                 text=self.money(prize),
                 fill=text_color,
                 anchor="e",
-                font=("Arial", max(10, int(row_height * 0.29)), "bold")
+                font=(FONT, max(10, int(row_height * 0.29)), "bold")
             )
 
         won = PREMI[self.level - 1] if self.level > 0 else 0
 
-        self.canvas.create_text(
-            (panel_x1 + panel_x2) / 2,
-            height * 0.92,
-            text=f"VINTI: € {self.money(won)}",
-            fill=self.WHITE,
-            font=("Arial", max(11, int(height * 0.019)), "bold")
-        )
+        # self.canvas.create_text(
+        #     (panel_x1 + panel_x2) / 2,
+        #     height * 0.92,
+        #     text=f"VINTI: € {self.money(won)}",
+        #     fill=self.WHITE,
+        #     font=(FONT, max(11, int(height * 0.019)), "bold")
+        # )
 
-        self.canvas.create_text(
-            width * 0.38,
-            height * 0.70,
-            text="CHI VUOL ESSERE MILIONARIO",
-            fill=self.WHITE,
-            font=("Arial", max(24, int(height * 0.045)), "bold")
-        )
+        # self.canvas.create_text(
+        #     width * 0.38,
+        #     height * 0.70,
+        #     text="CHI VUOL ESSERE MILIONARIO",
+        #     fill=self.WHITE,
+        #     font=(FONT, max(24, int(height * 0.045)), "bold")
+        # )
 
-        self.canvas.create_text(
-            width * 0.38,
-            height * 0.78,
-            text="PREMI SPAZIO O INVIO PER INIZIARE",
-            fill=self.GOLD,
-            font=("Arial", max(13, int(height * 0.023)), "bold")
-        )
+        # self.canvas.create_text(
+        #     width * 0.38,
+        #     height * 0.78,
+        #     text="PREMI SPAZIO O INVIO PER INIZIARE",
+        #     fill=self.GOLD,
+        #     font=(FONT, max(13, int(height * 0.023)), "bold")
+        # )
 
-        self.canvas.create_text(
-            width * 0.38,
-            height * 0.85,
-            text="La webcam è lo sfondo del gioco",
-            fill=self.WHITE,
-            font=("Arial", max(11, int(height * 0.018)))
-        )
+        # self.canvas.create_text(
+        #     width * 0.38,
+        #     height * 0.85,
+        #     text="La webcam è lo sfondo del gioco",
+        #     fill=self.WHITE,
+        #     font=(FONT, max(11, int(height * 0.018)))
+        # )
 
     # =====================================================
     # DOMANDA E RISPOSTE CON SFONDI IMMAGINE
@@ -339,55 +344,39 @@ class Milionario:
         if question is None:
             return
 
-        left = width * 0.035
-        right = width * 0.965
-
-        center_x = (left + right) / 2
-        content_width = right - left
+        center_x = width / 2
+        content_width = width * 0.96
 
         # -------------------------------------------------
-        # DOMANDA
+        # DOMANDA - SFONDO A TUTTA LARGHEZZA
         # -------------------------------------------------
 
         question_top = height * 0.55
         question_bottom = height * 0.70
 
-        self.draw_image(
-            "domanda",
-            left, question_top,
-            right, question_bottom,
-            self.BLUE
-        )
-
-        prize = PREMI[self.current_prize_index]
-        question_number = self.current_prize_index + 1
+        self.draw_image("domanda", 0, question_top, width, question_bottom, self.BLUE)
 
         self.canvas.create_text(
             center_x,
             (question_top + question_bottom) / 2,
-            text=(
-                f"DOMANDA {question_number}  •  € {self.money(prize)}"
-                f"\n\n{question.domanda}"
-            ),
+            text=question.domanda,
             fill=self.WHITE,
-            width=content_width * 0.92,
+            width=content_width,
             justify="center",
-            font=("Arial", max(15, int(height * 0.025)), "bold")
+            font=(FONT, max(15, int(height * 0.025)), "bold"),
         )
 
         # -------------------------------------------------
-        # RISPOSTE
+        # RISPOSTE - DUE COLONNE LARGHE
         # -------------------------------------------------
 
-        answers = [
-            question.A,
-            question.B,
-            question.C,
-            question.D
-        ]
+        answers = [question.A, question.B, question.C, question.D]
 
-        gap_x = width * 0.018
-        column_width = (content_width - gap_x) / 2
+        answer_left = width  * 0 # 0.02
+        answer_right = width *  1 # 0.98
+        answer_gap = width * 0 # 0.02
+
+        answer_width = (answer_right - answer_left - answer_gap) / 2
 
         answers_top = height * 0.725
         row_height = height * 0.075
@@ -396,16 +385,19 @@ class Milionario:
         for i, (letter, answer) in enumerate(zip(LETTERE, answers)):
             row, column = divmod(i, 2)
 
-            x1 = left + column * (column_width + gap_x)
-            x2 = x1 + column_width
+            # Coordinate orizzontali
+            x1 = answer_left + column * (answer_width + answer_gap)
+            x2 = x1 + answer_width
 
+            # Coordinate verticali: invariate
             y1 = answers_top + row * (row_height + gap_y)
             y2 = y1 + row_height
 
-            # Sfondo predefinito della risposta.
+            # Sfondo predefinito
             text_color = self.WHITE
             background = "risposta_blu"
 
+            # Colori nella schermata del risultato
             if self.state == "result":
                 if letter == question.corretta:
                     if self.blink_on:
@@ -415,48 +407,40 @@ class Milionario:
 
                 elif letter == self.selected_letter():
                     background = "risposta_blu"
-
                     text_color = "#111111"
 
-            self.draw_image(
-                background,
-                x1, y1, x2, y2,
-                self.BLUE
-            )
+            # Sfondo della risposta
+            self.draw_image(background, x1, y1, x2, y2, self.BLUE)
 
-            # Quando si seleziona una risposta, un bordo dorato
-            # evidenzia la selezione senza coprire l'immagine.
+            # Bordo dorato sulla risposta selezionata
             if self.state == "question" and i == self.selected:
                 self.canvas.create_rectangle(
-                    x1 + 2, y1 + 2,
-                    x2 - 2, y2 - 2,
-                    fill="",
-                    outline=self.GOLD,
-                    width=4
+                    x1 + 2, y1 + 2, x2 - 2, y2 - 2, fill="", outline=self.GOLD, width=4
                 )
 
-            # Testo sovrapposto all'immagine.
+            # Lettera della risposta
             self.canvas.create_text(
-                x1 + 15,
+                x1 + 50,
                 (y1 + y2) / 2,
                 text=f"{letter}:",
-                fill=text_color,
+                fill=self.ORANGE,
                 anchor="w",
-                font=("Arial", max(13, int(height * 0.022)), "bold")
+                font=(FONT, max(13, int(height * 0.022)), "bold"),
             )
 
+            # Testo della risposta
             self.canvas.create_text(
-                x1 + 65,
+                x1 + 100,
                 (y1 + y2) / 2,
                 text=answer,
                 fill=text_color,
                 anchor="w",
-                width=column_width - 85,
-                font=("Arial", max(12, int(height * 0.020)))
+                width=answer_width - 85,
+                font=(FONT, max(12, int(height * 0.020))),
             )
 
         # -------------------------------------------------
-        # ISTRUZIONI
+        # ISTRUZIONI IN BASSO
         # -------------------------------------------------
 
         if self.state == "question":
@@ -466,10 +450,7 @@ class Milionario:
             if self.selected_letter() == question.corretta:
                 hint = "RISPOSTA CORRETTA!"
             else:
-                hint = (
-                    f"RISPOSTA ERRATA — "
-                    f"QUELLA CORRETTA ERA {question.corretta}"
-                )
+                hint = f"RISPOSTA ERRATA — " f"QUELLA CORRETTA ERA {question.corretta}"
 
             hint += "   •   SPAZIO/INVIO: TORNA ALLA SCALATA"
 
@@ -480,7 +461,7 @@ class Milionario:
             fill=self.WHITE,
             width=content_width,
             justify="center",
-            font=("Arial", max(11, int(height * 0.017)), "bold")
+            font=(FONT, max(11, int(height * 0.017)), "bold"),
         )
 
     # =====================================================
@@ -496,7 +477,7 @@ class Milionario:
             center_y - 70,
             text="COMPLIMENTI!",
             fill=self.GOLD,
-            font=("Arial", max(30, int(height * 0.07)), "bold")
+            font=(FONT, max(30, int(height * 0.07)), "bold")
         )
 
         self.canvas.create_text(
@@ -504,7 +485,7 @@ class Milionario:
             center_y,
             text=f"HAI VINTO € {self.money(PREMI[-1])}",
             fill=self.WHITE,
-            font=("Arial", max(24, int(height * 0.045)), "bold")
+            font=(FONT, max(24, int(height * 0.045)), "bold")
         )
 
         self.canvas.create_text(
@@ -512,7 +493,7 @@ class Milionario:
             center_y + 75,
             text="Premi ESC per uscire",
             fill=self.WHITE,
-            font=("Arial", 16)
+            font=(FONT, 16)
         )
 
     # =====================================================
