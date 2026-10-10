@@ -93,7 +93,7 @@ class Milionario:
         self.audio_transition_id = None
 
         self.question_pool = DOMANDE.copy()
-        random.shuffle(self.question_pool)
+        # random.shuffle(self.question_pool)
 
         self.blink_on = True
         self.last_blink = time.monotonic()
