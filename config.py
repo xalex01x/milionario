@@ -9,4 +9,5 @@ IMMAGINI = {
     "risposta_arancio": "arancio.png",
     "canale_5": "canale_5.png",
     "sfondo_scalata": "sfondo_scalata.png",
+    "logo": "logo.png",
 }

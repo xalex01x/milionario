@@ -266,22 +266,22 @@ class Milionario:
                 self.canvas.create_rectangle(
                     0, 0, width, height, fill="black", outline="black"
                 )
+                center_x = width / 2
+                center_y = height / 2
+                logo_size = 800
+                x1 = (center_x - (logo_size / 2)) - 50
+                x2 = (center_x + (logo_size / 2)) + 50
+                y1 = center_y - logo_size / 2
+                y2 = center_y + logo_size / 2
+                self.draw_image("logo", x1, y1, x2, y2, self.BLUE)
 
-                self.canvas.create_text(
-                    width / 2,
-                    height * 0.45,
-                    text="CHI VUOL ESSERE MILIONARIO?",
-                    fill="white",
-                    font=(FONT, max(24, int(height * 0.045)), "bold"),
-                )
-
-                self.canvas.create_text(
-                    width / 2,
-                    height * 0.65,
-                    text="PREMI INVIO PER INIZIARE",
-                    fill=self.GOLD,
-                    font=(FONT, max(16, int(height * 0.025)), "bold"),
-                )
+                # self.canvas.create_text(
+                #     width / 2,
+                #     height * 0.80,
+                #     text="PREMI INVIO PER INIZIARE",
+                #     fill=self.GOLD,
+                #     font=(FONT, max(16, int(height * 0.025)), "bold"),
+                # )
 
                 self.root.after(33, self.draw_loop)
                 return
