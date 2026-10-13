@@ -11,3 +11,5 @@ IMMAGINI = {
     "sfondo_scalata": "sfondo_scalata.png",
     "logo": "logo.png",
 }
+
+CAMERA_INDEX = 0

@@ -3,9 +3,10 @@ import random
 import time
 from pathlib import Path
 import pygame
+import sys
 
 from domande import DOMANDE
-from config import LETTERE, PREMI, IMMAGINI
+from config import LETTERE, PREMI, IMMAGINI, CAMERA_INDEX
 
 try:
     import cv2
@@ -67,7 +68,7 @@ class Milionario:
         pygame.mixer.music.load(str(CARTELLA_ASSETS / "music_intro.mp3"))
         pygame.mixer.music.set_volume(1.0)
 
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(CAMERA_INDEX)
         self.photo = None
 
         # Immagini originali e immagini ridimensionate.
