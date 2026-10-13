@@ -183,14 +183,8 @@ class Milionario:
                 print(f"Errore nel caricamento di {path}: {exc}")
 
     def draw_image(self, nome, x1, y1, x2, y2, fallback_color):
-        """
-        Disegna un'immagine come sfondo del testo.
-        Se l'immagine manca, usa un rettangolo di fallback.
-        Le immagini ridimensionate vengono memorizzate in cache.
-        """
-
-        width = max(1, int(x2 - x1))
-        height = max(1, int(y2 - y1))
+        area_w = max(1, int(x2 - x1))
+        area_h = max(1, int(y2 - y1))
 
         original = self.assets.get(nome)
 
@@ -200,16 +194,25 @@ class Milionario:
             )
             return
 
-        cache_key = (nome, width, height)
+        # Fattore di scala: l'immagine entra interamente nell'area
+        scale = min(area_w / original.width, area_h / original.height)
+
+        new_w = max(1, int(original.width * scale))
+        new_h = max(1, int(original.height * scale))
+
+        cache_key = (nome, new_w, new_h)
 
         if cache_key not in self.asset_cache:
-            resized = original.resize((width, height), Image.Resampling.LANCZOS)
-
+            resized = original.resize((new_w, new_h), Image.Resampling.LANCZOS)
             self.asset_cache[cache_key] = ImageTk.PhotoImage(resized)
 
         image = self.asset_cache[cache_key]
 
-        self.canvas.create_image(x1, y1, image=image, anchor="nw")
+        # Centra l'immagine nell'area
+        pos_x = x1 + (area_w - new_w) / 2
+        pos_y = y1 + (area_h - new_h) / 2
+
+        self.canvas.create_image(pos_x, pos_y, image=image, anchor="nw")
 
     # =====================================================
     # UTILITÀ
@@ -489,6 +492,15 @@ class Milionario:
                 anchor="w",
                 width=answer_width - 85,
                 font=(FONT, max(12, int(height * 0.020))),
+            )
+
+        # -------------------------------------------------
+        # IMMAGINI DOMANDA
+        # -------------------------------------------------
+
+        if question.immagine is not None:
+            self.draw_image(
+                question.immagine, width / 2, 0, width, question_top - 50, self.BLUE
             )
 
         # -------------------------------------------------

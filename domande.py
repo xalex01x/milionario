@@ -9,6 +9,7 @@ class Domanda:
     C: str
     D: str
     corretta: str
+    immagine: str = None
 
 
 DOMANDE = []
