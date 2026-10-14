@@ -411,15 +411,22 @@ class Milionario:
         question_bottom = height * 0.75
 
         self.draw_image("domanda", 0, question_top, width, question_bottom, self.BLUE)
+        
+        lung = len(question.domanda)
+        txt_h = max(15, int(height * 0.025))
+        if lung > 50:
+            txt_h *= 0.6
+        elif lung > 40:
+            txt_h *= 0.9
 
         self.canvas.create_text(
             center_x,
             (question_top + question_bottom) / 2,
             text=question.domanda,
             fill=self.WHITE,
-            width=content_width,
+            width=content_width * 0.8,
             justify="center",
-            font=(FONT, max(15, int(height * 0.025)), "bold"),
+            font=(FONT, int(txt_h) , "bold"),
         )
 
         # -------------------------------------------------
