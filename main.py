@@ -411,12 +411,12 @@ class Milionario:
         question_bottom = height * 0.75
 
         self.draw_image("domanda", 0, question_top, width, question_bottom, self.BLUE)
-        
+
         lung = len(question.domanda)
         txt_h = max(15, int(height * 0.025))
-        if lung > 50:
+        if lung > 200:
             txt_h *= 0.6
-        elif lung > 40:
+        elif lung > 100:
             txt_h *= 0.9
 
         self.canvas.create_text(
@@ -426,7 +426,7 @@ class Milionario:
             fill=self.WHITE,
             width=content_width * 0.8,
             justify="center",
-            font=(FONT, int(txt_h) , "bold"),
+            font=(FONT, int(txt_h), "bold"),
         )
 
         # -------------------------------------------------
@@ -578,7 +578,7 @@ class Milionario:
 
         if not self.question_pool:
             self.question_pool = DOMANDE.copy()
-            random.shuffle(self.question_pool)
+            # random.shuffle(self.question_pool)
 
         self.current_question = self.question_pool.pop()
         self.current_prize_index = self.level
@@ -610,6 +610,8 @@ class Milionario:
         self.last_blink = time.monotonic()
 
         if is_correct:
+            # se risposndi correttamente rimuovi
+            DOMANDE.remove(self.current_question)
             self.level += 1
             self.play_effect("corretta")
         else:
