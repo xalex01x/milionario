@@ -41,6 +41,14 @@ class Milionario:
     ORANGE = "#ff8c00"
 
     def __init__(self, root):
+
+        if len(DOMANDE) < 1:
+            print("Aggiungi delle domande prima di iniziare")
+            sys.exit(1)
+        if len(DOMANDE) != len(PREMI):
+            print("Ad ogni domanda deve corrispondere un premio")
+            sys.exit(1)
+
         self.root = root
         self.root.title("Chi vuol essere milionario")
         self.root.configure(bg=self.BG)
